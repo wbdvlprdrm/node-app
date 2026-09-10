@@ -1,33 +1,30 @@
-name: Node.js CI/CD Pipeline
-
+name: Deploy to GCP
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-    
     steps:
-    # Upgraded to v4 to fix the Node 20 deprecation warning
-    - name: Checkout Repository
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v3
 
-    # Upgraded to v4
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
+    # 1. Authenticate with Google Cloud securely
+    - id: auth
+      uses: google-github-actions/auth@v1
       with:
-        node-version: '18'
-    - name: Deploy to GCP VM
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.GCP_VM_HOST }}
-        username: ${{ secrets.GCP_VM_USERNAME }}
-        key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
-        timeout: 30s # <--- ADD THIS LINE
-        script: |
-          set -x
-          cd ~/node-app
-          git pull origin main
-          npm install
-          pm2 restart app || pm2 start index.js --name "app"
+        credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
+
+    # 2. Set up the Google Cloud CLI
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+
+    # 3. Use gcloud to SSH into the VM safely
+    - name: Deploy to VM
+      run: |
+        gcloud compute ssh web-001 --zone=us-central1-c --command="
+          cd ~/node-app &&
+          git pull origin main &&
+          npm install &&
+          pm2 restart app || pm2 start index.js --name 'app'
+        "
