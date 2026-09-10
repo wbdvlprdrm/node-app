@@ -9,11 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+    # Upgraded to v4 to fix the Node 20 deprecation warning
     - name: Checkout Repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
+    # Upgraded to v4
     - name: Set up Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '18'
 
@@ -24,8 +26,15 @@ jobs:
         username: ${{ secrets.GCP_VM_USERNAME }}
         key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
         script: |
-          cd ~/my-node-app
+          # Ensure pm2 is installed
+          if ! command -v pm2 &> /dev/null; then
+              sudo npm install -g pm2
+          fi
+          
+          # Changed to node-app to match your actual GitHub repository name!
+          cd ~/node-app
+          
+          # Pull latest code and restart
           git pull origin main
           npm install
-          # PM2 starts the app or restarts it if it is already running
-          pm2 restart app || pm2 start index.js --name "app"
+        pm2 restart app || pm2 start index.js --name "app"
